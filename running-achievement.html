@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Running Achievement Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root[data-theme="dark"]{
+  --bg:#0d0f0e;--bg2:#141716;--bg3:#1c201e;--card:#1e2320;--card2:#252b27;
+  --border:#2e3630;--text:#e8ede9;--text2:#8fa894;--text3:#5a6b5e;
+  --accent:#7ec832;--accent2:#a8e063;--accent-glow:rgba(126,200,50,0.25);
+  --shadow:rgba(0,0,0,0.6);--locked-bg:#1a1d1b;--locked-filter:blur(6px) grayscale(1) brightness(0.3);
+}
+:root[data-theme="light"]{
+  --bg:#f0f4ee;--bg2:#e8ede5;--bg3:#dde5d9;--card:#ffffff;--card2:#f5f8f3;
+  --border:#c8d8c0;--text:#1a2018;--text2:#4a6040;--text3:#8aaa7e;
+  --accent:#5a9e1a;--accent2:#78c800;--accent-glow:rgba(90,158,26,0.2);
+  --shadow:rgba(0,0,0,0.12);--locked-bg:#e0e8dc;--locked-filter:blur(6px) grayscale(1) brightness(0.7);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Rajdhani',sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s;
+}
+
+/* ── BACKGROUND TEXTURE ── */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;
+  background-image:radial-gradient(circle at 20% 10%,rgba(126,200,50,0.04) 0%,transparent 50%),
+    radial-gradient(circle at 80% 80%,rgba(126,200,50,0.03) 0%,transparent 50%);
+  z-index:0;
+}
+
+/* ── HEADER ── */
+header{
+  position:sticky;top:0;z-index:100;
+  background:var(--bg);border-bottom:1px solid var(--border);
+  padding:0 2rem;display:flex;align-items:center;justify-content:space-between;
+  height:64px;backdrop-filter:blur(12px);
+}
+.logo{font-family:'Bebas Neue',cursive;font-size:1.8rem;letter-spacing:.12em;color:var(--accent2);
+  text-shadow:0 0 20px var(--accent-glow);}
+.header-right{display:flex;gap:1rem;align-items:center;}
+.theme-btn{
+  background:var(--card);border:1px solid var(--border);color:var(--text2);
+  padding:.45rem .9rem;border-radius:8px;cursor:pointer;font-family:'Rajdhani',sans-serif;
+  font-size:.9rem;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:.4rem;
+}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent);}
+.stat-pill{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  padding:.3rem .8rem;font-size:.85rem;font-weight:700;color:var(--text2);
+  display:flex;align-items:center;gap:.4rem;
+}
+.stat-pill span{color:var(--accent2);font-size:1rem;}
+
+/* ── MAIN ── */
+main{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:2rem;}
+
+/* ── SECTION HEADERS ── */
+.section-title{
+  font-family:'Bebas Neue',cursive;font-size:1.5rem;letter-spacing:.15em;
+  color:var(--text2);margin-bottom:1.5rem;display:flex;align-items:center;gap:.75rem;
+}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.section-title .icon{font-size:1.2rem;}
+
+/* ── PROGRESS SECTION ── */
+.achievement-section{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:1.75rem;margin-bottom:1.5rem;
+}
+.prog-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1rem;}
+.prog-title{font-family:'Bebas Neue',cursive;font-size:1.8rem;letter-spacing:.1em;color:var(--text);}
+.prog-stats{font-size:.85rem;color:var(--text2);font-weight:600;}
+.prog-stats strong{color:var(--accent2);font-size:1rem;}
+
+/* ── PROGRESS BAR ── */
+.bar-wrap{position:relative;margin-bottom:2.5rem;}
+.bar-track{
+  height:22px;background:var(--bg3);border-radius:100px;overflow:hidden;
+  border:1px solid var(--border);position:relative;
+}
+.bar-fill{
+  height:100%;border-radius:100px;transition:width 1s cubic-bezier(.4,0,.2,1);
+  background:linear-gradient(90deg,#4a9600,#7ec832,#a8e063);
+  box-shadow:0 0 16px rgba(126,200,50,.4);position:relative;
+  min-width:0px;
+}
+.bar-fill::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:4px;
+  background:rgba(255,255,255,.5);border-radius:0 100px 100px 0;
+  animation:shimmer-tip 2s ease-in-out infinite;
+}
+@keyframes shimmer-tip{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* milestone ticks on bar */
+.milestone-tick{
+  position:absolute;bottom:-20px;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+}
+.tick-line{width:1.5px;height:10px;background:var(--text3);}
+.tick-label{font-size:.6rem;color:var(--text3);font-weight:700;white-space:nowrap;}
+.milestone-tick.earned .tick-line{background:var(--accent);}
+.milestone-tick.earned .tick-label{color:var(--accent);}
+
+/* ── MEDALS GRID ── */
+.medals-scroll{
+  overflow-x:auto;padding-bottom:.5rem;
+}
+.medals-row{
+  display:flex;gap:1rem;min-width:max-content;padding:.25rem .1rem 1rem;
+}
+
+/* ── MEDAL CARD ── */
+.medal-card{
+  display:flex;flex-direction:column;align-items:center;gap:.5rem;
+  width:100px;flex-shrink:0;
+}
+.medal-wrap{position:relative;width:80px;height:80px;}
+
+.medal-body{
+  width:80px;height:80px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;cursor:default;transition:transform .3s;
+  filter:var(--locked-filter);
+}
+.medal-card.earned .medal-body{filter:none;}
+.medal-card.earned .medal-body:hover{transform:scale(1.08) rotate(-3deg);}
+
+/* medal ribbon */
+.medal-ribbon{
+  position:absolute;top:-12px;left:50%;transform:translateX(-50%);
+  width:10px;height:14px;border-radius:3px 3px 0 0;
+}
+.medal-ribbon::before{
+  content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);
+  width:14px;height:8px;border-radius:50%;border:2px solid inherit;
+}
+
+/* medal label */
+.medal-label{
+  font-size:.7rem;font-weight:700;color:var(--text3);letter-spacing:.05em;
+  text-align:center;
+}
+.medal-card.earned .medal-label{color:var(--accent2);}
+
+/* medal number text */
+.medal-num{
+  font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:.05em;
+  text-align:center;z-index:1;line-height:1;
+}
+.medal-sub{font-size:.55rem;font-weight:700;letter-spacing:.1em;}
+
+/* ── TIER STYLES ── */
+.tier-copper .medal-body{background:radial-gradient(circle at 35% 35%,#e8a87c,#b87333,#7a4a1a);
+  box-shadow:0 4px 15px rgba(184,115,51,.4);}
+.tier-copper .medal-num{color:#fff3e0;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.tier-copper .medal-ribbon{background:#9b6019;}
+
+.tier-bronze .medal-body{background:radial-gradient(circle at 35% 35%,#f0c070,#cd7f32,#8b5220);
+  box-shadow:0 4px 15px rgba(205,127,50,.4);}
+.tier-bronze .medal-num{color:#fff8e1;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.tier-bronze .medal-ribbon{background:#a86020;}
+
+.tier-silver .medal-body{background:radial-gradient(circle at 35% 35%,#ffffff,#d0d0d0,#909090);
+  box-shadow:0 4px 15px rgba(180,180,180,.4);}
+.tier-silver .medal-num{color:#444;text-shadow:0 1px 2px rgba(255,255,255,.5);}
+.tier-silver .medal-ribbon{background:#909090;}
+
+.tier-gold .medal-body{background:radial-gradient(circle at 35% 35%,#fff176,#ffd700,#c8a000);
+  box-shadow:0 4px 20px rgba(255,215,0,.5);}
+.tier-gold .medal-num{color:#5a3a00;text-shadow:0 1px 2px rgba(255,255,255,.3);}
+.tier-gold .medal-ribbon{background:#c8a000;}
+
+.tier-platinum .medal-body{background:radial-gradient(circle at 35% 35%,#e8f4ff,#b0c4de,#708090);
+  box-shadow:0 4px 20px rgba(176,196,222,.5);}
+.tier-platinum .medal-num{color:#1a2a3a;text-shadow:0 1px 2px rgba(255,255,255,.5);}
+.tier-platinum .medal-ribbon{background:#708090;}
+
+.tier-diamond .medal-body{background:radial-gradient(circle at 30% 30%,#ffffff,#b9f2ff,#69d8f4,#3ab5d0);
+  box-shadow:0 4px 25px rgba(105,216,244,.6);}
+.tier-diamond .medal-num{color:#003040;text-shadow:0 1px 3px rgba(255,255,255,.8);}
+.tier-diamond .medal-ribbon{background:#3ab5d0;}
+
+.tier-emerald .medal-body{background:radial-gradient(circle at 35% 35%,#a8ffc0,#50c878,#1a7a40);
+  box-shadow:0 4px 20px rgba(80,200,120,.5);}
+.tier-emerald .medal-num{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.tier-emerald .medal-ribbon{background:#1a7a40;}
+
+.tier-sapphire .medal-body{background:radial-gradient(circle at 35% 35%,#8ab4ff,#0f52ba,#092080);
+  box-shadow:0 4px 20px rgba(15,82,186,.5);}
+.tier-sapphire .medal-num{color:#c8daff;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.tier-sapphire .medal-ribbon{background:#092080;}
+
+.tier-ruby .medal-body{background:radial-gradient(circle at 35% 35%,#ff8a9a,#e0115f,#7a0020);
+  box-shadow:0 4px 20px rgba(224,17,95,.5);}
+.tier-ruby .medal-num{color:#ffe8ee;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.tier-ruby .medal-ribbon{background:#7a0020;}
+
+.tier-amethyst .medal-body{background:radial-gradient(circle at 35% 35%,#d8a8ff,#9b59b6,#5a1a80);
+  box-shadow:0 4px 20px rgba(155,89,182,.5);}
+.tier-amethyst .medal-num{color:#f5e8ff;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.tier-amethyst .medal-ribbon{background:#5a1a80;}
+
+.tier-rainbow .medal-body{background:conic-gradient(#ff4444,#ff8800,#ffdd00,#44dd00,#00ccff,#8844ff,#ff44aa,#ff4444);
+  box-shadow:0 4px 25px rgba(200,100,255,.6);}
+.tier-rainbow .medal-num{color:#fff;text-shadow:0 0 8px rgba(0,0,0,.8);}
+.tier-rainbow .medal-ribbon{background:#aa44ff;}
+
+.tier-legendary .medal-body{background:radial-gradient(circle at 35% 35%,#fff7a0,#ff8c00,#cc3300);
+  box-shadow:0 4px 30px rgba(255,100,0,.7);animation:legendary-pulse 2s ease-in-out infinite;}
+.tier-legendary .medal-num{color:#fff;text-shadow:0 0 10px rgba(255,150,0,.9);}
+.tier-legendary .medal-ribbon{background:#cc3300;}
+@keyframes legendary-pulse{0%,100%{box-shadow:0 4px 30px rgba(255,100,0,.7)}50%{box-shadow:0 4px 50px rgba(255,150,0,1),0 0 80px rgba(255,80,0,.4)}}
+
+.tier-mythic .medal-body{background:radial-gradient(circle at 35% 35%,#ffd700,#8800ff,#1a0040);
+  box-shadow:0 4px 30px rgba(136,0,255,.7);animation:mythic-pulse 2.5s ease-in-out infinite;}
+.tier-mythic .medal-num{color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,1);}
+.tier-mythic .medal-ribbon{background:#4400aa;}
+@keyframes mythic-pulse{0%,100%{box-shadow:0 4px 30px rgba(136,0,255,.7)}50%{box-shadow:0 4px 60px rgba(180,0,255,1),0 0 100px rgba(255,215,0,.3)}}
+
+.tier-cosmic .medal-body{
+  background:radial-gradient(circle at 35% 35%,#ffffff,#a0e8ff,#4040ff,#000022);
+  box-shadow:0 4px 40px rgba(100,100,255,.8);
+  animation:cosmic-spin 6s linear infinite,cosmic-pulse 3s ease-in-out infinite;
+}
+.tier-cosmic .medal-num{color:#fff;text-shadow:0 0 15px #00ffff,0 0 30px #0088ff;}
+.tier-cosmic .medal-ribbon{background:#0000aa;}
+@keyframes cosmic-spin{from{filter:none hue-rotate(0deg)}to{filter:hue-rotate(360deg)}}
+@keyframes cosmic-pulse{0%,100%{box-shadow:0 4px 40px rgba(100,100,255,.8)}50%{box-shadow:0 4px 80px rgba(200,100,255,1),0 0 120px rgba(0,200,255,.5)}}
+
+/* inner ring detail */
+.medal-body::before{
+  content:'';position:absolute;inset:8px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.25);pointer-events:none;
+}
+.medal-body::after{
+  content:'';position:absolute;inset:12px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.12);pointer-events:none;
+}
+
+/* lock overlay */
+.medal-lock{
+  position:absolute;inset:0;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;color:var(--text3);
+  background:rgba(0,0,0,.4);
+}
+.medal-card.earned .medal-lock{display:none;}
+
+/* ── SPARKLE ── */
+.sparkle-container{
+  position:absolute;inset:-20px;pointer-events:none;z-index:10;
+}
+.sparkle-particle{
+  position:absolute;width:6px;height:6px;border-radius:50%;
+  opacity:0;transform:translate(-50%,-50%);
+}
+.medal-card.earned .sparkle-particle{
+  animation:sparkle-burst 1.8s ease-out infinite;
+}
+.sparkle-particle:nth-child(1){top:50%;left:50%;background:#ffe066;animation-delay:0s;--dx:-35px;--dy:-35px;}
+.sparkle-particle:nth-child(2){top:50%;left:50%;background:#ff9944;animation-delay:.2s;--dx:0px;--dy:-45px;}
+.sparkle-particle:nth-child(3){top:50%;left:50%;background:#ff66aa;animation-delay:.4s;--dx:35px;--dy:-35px;}
+.sparkle-particle:nth-child(4){top:50%;left:50%;background:#66ccff;animation-delay:.6s;--dx:45px;--dy:0px;}
+.sparkle-particle:nth-child(5){top:50%;left:50%;background:#aaff66;animation-delay:.8s;--dx:35px;--dy:35px;}
+.sparkle-particle:nth-child(6){top:50%;left:50%;background:#ffee44;animation-delay:1s;--dx:0px;--dy:45px;}
+.sparkle-particle:nth-child(7){top:50%;left:50%;background:#cc88ff;animation-delay:1.2s;--dx:-35px;--dy:35px;}
+.sparkle-particle:nth-child(8){top:50%;left:50%;background:#44ffee;animation-delay:1.4s;--dx:-45px;--dy:0px;}
+@keyframes sparkle-burst{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(0)}
+  20%{opacity:1;transform:translate(calc(-50% + var(--dx)*.3),calc(-50% + var(--dy)*.3)) scale(1)}
+  60%{opacity:.8;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.6)}
+  100%{opacity:0;transform:translate(calc(-50% + var(--dx)*1.4),calc(-50% + var(--dy)*1.4)) scale(0)}
+}
+/* star sparkles */
+.star-sparkle{
+  position:absolute;opacity:0;font-size:.8rem;pointer-events:none;
+}
+.medal-card.earned .star-sparkle{animation:star-twinkle 2s ease-in-out infinite;}
+.star-sparkle:nth-child(9){top:5px;left:60%;animation-delay:0.3s;}
+.star-sparkle:nth-child(10){top:60%;left:5px;animation-delay:0.9s;}
+.star-sparkle:nth-child(11){top:10%;left:10%;animation-delay:1.5s;}
+.star-sparkle:nth-child(12){top:80%;left:75%;animation-delay:0.6s;}
+@keyframes star-twinkle{
+  0%,100%{opacity:0;transform:scale(0) rotate(0deg)}
+  50%{opacity:1;transform:scale(1) rotate(180deg)}
+}
+
+/* reveal animation */
+.medal-card.just-earned .medal-body{animation:medal-reveal .8s cubic-bezier(.2,.8,.3,1.2);}
+@keyframes medal-reveal{
+  0%{transform:scale(0) rotate(-90deg)}
+  60%{transform:scale(1.2) rotate(5deg)}
+  100%{transform:scale(1) rotate(0deg)}
+}
+
+/* ── DATA SECTION ── */
+.data-controls{
+  display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1.5rem;align-items:center;
+}
+.btn{
+  font-family:'Rajdhani',sans-serif;font-weight:700;font-size:.9rem;
+  padding:.55rem 1.2rem;border-radius:8px;border:none;cursor:pointer;
+  transition:all .2s;letter-spacing:.04em;display:flex;align-items:center;gap:.4rem;
+}
+.btn-primary{background:var(--accent);color:#0a1a00;}
+.btn-primary:hover{background:var(--accent2);box-shadow:0 0 20px var(--accent-glow);}
+.btn-secondary{background:var(--card2);border:1px solid var(--border);color:var(--text2);}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:var(--card2);border:1px solid #5a2020;color:#ff7070;}
+.btn-danger:hover{background:#3a1010;border-color:#ff5050;}
+
+/* ── FORM ── */
+.add-form{
+  background:var(--card2);border:1px solid var(--border);border-radius:12px;
+  padding:1.25rem;margin-bottom:1.5rem;display:none;
+}
+.add-form.open{display:block;}
+.form-row{display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;}
+.form-group{display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:140px;}
+.form-label{font-size:.75rem;font-weight:700;color:var(--text2);letter-spacing:.06em;text-transform:uppercase;}
+.form-input{
+  background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:.6rem .85rem;border-radius:8px;font-family:'Rajdhani',sans-serif;font-size:.95rem;font-weight:600;
+  outline:none;transition:border-color .2s;
+}
+.form-input:focus{border-color:var(--accent);}
+.form-input::placeholder{color:var(--text3);}
+
+/* ── LOG TABLE ── */
+.log-section{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  overflow:hidden;margin-bottom:1.5rem;
+}
+.log-header{
+  padding:1rem 1.5rem;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;user-select:none;
+}
+.log-header-left{display:flex;align-items:center;gap:.75rem;}
+.log-header-title{font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:.1em;color:var(--text);}
+.log-count{font-size:.8rem;color:var(--text3);font-weight:700;}
+.expand-btn{
+  background:var(--card2);border:1px solid var(--border);border-radius:6px;
+  padding:.3rem .7rem;font-size:.8rem;font-weight:700;color:var(--text2);
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.3rem;
+}
+.expand-btn:hover{border-color:var(--accent);color:var(--accent);}
+.chevron{transition:transform .3s;}
+.log-section.expanded .chevron{transform:rotate(180deg);}
+
+table{width:100%;border-collapse:collapse;}
+thead th{
+  padding:.75rem 1.5rem;text-align:left;font-size:.7rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--text3);
+  border-bottom:1px solid var(--border);background:var(--bg3);
+}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--card2);}
+tbody td{padding:.75rem 1.5rem;font-size:.9rem;font-weight:600;color:var(--text);}
+.td-date{color:var(--text2);}
+.td-dist{color:var(--accent2);font-family:'Bebas Neue',cursive;font-size:1.05rem;letter-spacing:.05em;}
+.td-time{color:var(--text);}
+.td-actions{text-align:right;}
+.del-btn{
+  background:none;border:none;color:var(--text3);cursor:pointer;
+  padding:.2rem .4rem;border-radius:4px;transition:color .2s;font-size:.9rem;
+}
+.del-btn:hover{color:#ff6060;}
+
+/* hidden rows */
+.log-row.hidden{display:none;}
+.log-section.expanded .log-row{display:table-row !important;}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  text-align:center;padding:3rem;color:var(--text3);
+}
+.empty-state .es-icon{font-size:2.5rem;margin-bottom:.75rem;}
+.empty-state p{font-size:.9rem;}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:2rem;right:2rem;z-index:200;
+  background:var(--accent);color:#0a1a00;padding:.75rem 1.25rem;border-radius:10px;
+  font-weight:700;font-size:.9rem;letter-spacing:.04em;
+  transform:translateY(100px);opacity:0;transition:all .4s;
+  display:flex;align-items:center;gap:.5rem;
+  box-shadow:0 4px 30px var(--accent-glow);
+}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* ── CSV HIDDEN INPUT ── */
+#csvInput{display:none;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  header{padding:0 1rem;}
+  main{padding:1rem;}
+  .logo{font-size:1.4rem;}
+  tbody td,thead th{padding:.6rem .8rem;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏃 RunTrack</div>
+  <div class="header-right">
+    <div class="stat-pill">Total KM: <span id="hdr-km">0</span></div>
+    <div class="stat-pill">Runs: <span id="hdr-runs">0</span></div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙 Dark</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ── DISTANCE ACHIEVEMENT ── -->
+<div class="achievement-section">
+  <div class="prog-header">
+    <div class="prog-title">📍 Distance Progress</div>
+    <div class="prog-stats">
+      <strong id="total-km-display">0</strong> / 1000 km
+      &nbsp;·&nbsp;
+      Next: <strong id="next-km-milestone">5 km</strong>
+    </div>
+  </div>
+  <div class="bar-wrap">
+    <div class="bar-track">
+      <div class="bar-fill" id="km-bar" style="width:0%"></div>
+    </div>
+    <div id="km-ticks"></div>
+  </div>
+  <div class="medals-scroll">
+    <div class="medals-row" id="km-medals"></div>
+  </div>
+</div>
+
+<!-- ── RUNS ACHIEVEMENT ── -->
+<div class="achievement-section">
+  <div class="prog-header">
+    <div class="prog-title">🎯 Run Count Progress</div>
+    <div class="prog-stats">
+      <strong id="total-runs-display">0</strong> / 1000 runs
+      &nbsp;·&nbsp;
+      Next: <strong id="next-run-milestone">12 runs</strong>
+    </div>
+  </div>
+  <div class="bar-wrap">
+    <div class="bar-track">
+      <div class="bar-fill" id="run-bar" style="width:0%"></div>
+    </div>
+    <div id="run-ticks"></div>
+  </div>
+  <div class="medals-scroll">
+    <div class="medals-row" id="run-medals"></div>
+  </div>
+</div>
+
+<!-- ── DATA INPUT SECTION ── -->
+<div class="achievement-section" style="margin-bottom:1.5rem;">
+  <div class="section-title"><span class="icon">➕</span>Log a Run</div>
+  <div class="data-controls">
+    <button class="btn btn-primary" onclick="toggleForm()">✚ Add Run Manually</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('csvInput').click()">📂 Import CSV</button>
+    <button class="btn btn-secondary" onclick="downloadCSV()">⬇ Export CSV</button>
+    <input type="file" id="csvInput" accept=".csv" onchange="handleCSV(event)"/>
+  </div>
+  <div class="add-form" id="addForm">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-input" id="inp-date"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Distance (km)</label>
+        <input type="number" class="form-input" id="inp-dist" placeholder="5.5" step="0.01" min="0"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Time (hh:mm:ss)</label>
+        <input type="text" class="form-input" id="inp-time" placeholder="00:30:00"/>
+      </div>
+      <div class="form-group" style="flex:0">
+        <label class="form-label">&nbsp;</label>
+        <button class="btn btn-primary" onclick="addRun()">Save</button>
+      </div>
+    </div>
+    <p id="form-error" style="color:#ff7070;font-size:.8rem;margin-top:.5rem;display:none;"></p>
+  </div>
+</div>
+
+<!-- ── LOG TABLE ── -->
+<div class="log-section" id="logSection">
+  <div class="log-header" onclick="toggleLog()">
+    <div class="log-header-left">
+      <span class="log-header-title">Run Log</span>
+      <span class="log-count" id="log-count-badge">0 entries</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <button class="btn btn-danger" onclick="clearAll(event)" style="font-size:.8rem;padding:.35rem .8rem;">🗑 Clear All</button>
+      <button class="expand-btn">
+        <span>Expand</span><span class="chevron">▼</span>
+      </button>
+    </div>
+  </div>
+  <div id="log-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Distance</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="log-body">
+      </tbody>
+    </table>
+    <div class="empty-state" id="empty-state">
+      <div class="es-icon">🏅</div>
+      <p>No runs logged yet. Add your first run above!</p>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+//  DATA
+// ─────────────────────────────────────────────
+const KM_MILESTONES = [
+  {v:5,   tier:'copper',   label:'5km'},
+  {v:10,  tier:'bronze',   label:'10km'},
+  {v:15,  tier:'bronze',   label:'15km'},
+  {v:20,  tier:'silver',   label:'20km'},
+  {v:25,  tier:'silver',   label:'25km'},
+  {v:30,  tier:'gold',     label:'30km'},
+  {v:35,  tier:'gold',     label:'35km'},
+  {v:40,  tier:'gold',     label:'40km'},
+  {v:50,  tier:'platinum', label:'50km'},
+  {v:75,  tier:'platinum', label:'75km'},
+  {v:100, tier:'diamond',  label:'100km'},
+  {v:150, tier:'emerald',  label:'150km'},
+  {v:200, tier:'sapphire', label:'200km'},
+  {v:250, tier:'ruby',     label:'250km'},
+  {v:300, tier:'amethyst', label:'300km'},
+  {v:400, tier:'rainbow',  label:'400km'},
+  {v:500, tier:'legendary',label:'500km'},
+  {v:750, tier:'mythic',   label:'750km'},
+  {v:1000,tier:'cosmic',   label:'1000km'},
+];
+
+const RUN_MILESTONES = [
+  {v:12,  tier:'copper',   label:'12 Runs'},
+  {v:25,  tier:'bronze',   label:'25 Runs'},
+  {v:37,  tier:'bronze',   label:'37 Runs'},
+  {v:50,  tier:'silver',   label:'50 Runs'},
+  {v:62,  tier:'silver',   label:'62 Runs'},
+  {v:75,  tier:'gold',     label:'75 Runs'},
+  {v:87,  tier:'gold',     label:'87 Runs'},
+  {v:100, tier:'platinum', label:'100 Runs'},
+  {v:150, tier:'diamond',  label:'150 Runs'},
+  {v:200, tier:'emerald',  label:'200 Runs'},
+  {v:300, tier:'sapphire', label:'300 Runs'},
+  {v:500, tier:'ruby',     label:'500 Runs'},
+  {v:750, tier:'mythic',   label:'750 Runs'},
+  {v:1000,tier:'cosmic',   label:'1000 Runs'},
+];
+
+// shape variants for medal inner design per tier
+const TIER_SHAPES = {
+  copper:'⬟', bronze:'◆', silver:'◉', gold:'★', platinum:'✦',
+  diamond:'💎', emerald:'♧', sapphire:'♦', ruby:'❤', amethyst:'✸',
+  rainbow:'🌈', legendary:'🔥', mythic:'⚡', cosmic:'✵'
+};
+
+let runs = JSON.parse(localStorage.getItem('runtrack_runs') || '[]');
+
+// ─────────────────────────────────────────────
+//  COMPUTED
+// ─────────────────────────────────────────────
+function totalKm(){return runs.reduce((a,r)=>a+parseFloat(r.dist||0),0);}
+function totalRuns(){return runs.length;}
+
+// ─────────────────────────────────────────────
+//  SAVE
+// ─────────────────────────────────────────────
+function save(){localStorage.setItem('runtrack_runs',JSON.stringify(runs));}
+
+// ─────────────────────────────────────────────
+//  RENDER MEDALS
+// ─────────────────────────────────────────────
+function buildMedalHTML(ms, value, unit, newlyEarned){
+  const earned = value >= ms.v;
+  const isNew = newlyEarned && newlyEarned.has(ms.v);
+  const numText = unit==='km' ? ms.v+'<div class="medal-sub">KM</div>' : ms.v+'<div class="medal-sub">RUNS</div>';
+  const sparkles = Array(8).fill(0).map((_,i)=>`<div class="sparkle-particle"></div>`).join('');
+  const stars = Array(4).fill(0).map((_,i)=>`<div class="star-sparkle">✦</div>`).join('');
+  return `
+  <div class="medal-card tier-${ms.tier} ${earned?'earned':''} ${isNew?'just-earned':''}" data-milestone="${ms.v}">
+    <div class="medal-wrap">
+      <div class="medal-body">
+        <div class="medal-num">${numText}</div>
+      </div>
+      <div class="sparkle-container">${sparkles}${stars}</div>
+      ${earned?'':'<div class="medal-lock">🔒</div>'}
+    </div>
+    <div class="medal-label">${ms.label}</div>
+  </div>`;
+}
+
+function renderMedals(milestones, containerId, value, unit, newlyEarned){
+  const c = document.getElementById(containerId);
+  c.innerHTML = milestones.map(ms=>buildMedalHTML(ms,value,unit,newlyEarned)).join('');
+}
+
+// ─────────────────────────────────────────────
+//  RENDER TICKS
+// ─────────────────────────────────────────────
+function renderTicks(milestones, containerId, value, max){
+  const c = document.getElementById(containerId);
+  c.innerHTML = milestones.map(ms=>{
+    const pct = (ms.v/max)*100;
+    const earned = value >= ms.v;
+    return `<div class="milestone-tick ${earned?'earned':''}" style="left:${pct}%;position:absolute;bottom:-22px;">
+      <div class="tick-line"></div>
+      <div class="tick-label">${ms.v}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+//  NEXT MILESTONE
+// ─────────────────────────────────────────────
+function nextMilestone(milestones, value){
+  const n = milestones.find(m=>m.v > value);
+  return n ? n.label : '✅ Complete!';
+}
+
+// ─────────────────────────────────────────────
+//  FULL RENDER
+// ─────────────────────────────────────────────
+let prevKm = 0, prevRuns = 0;
+function render(animate){
+  const km = totalKm();
+  const rc = totalRuns();
+
+  // determine newly earned
+  const newKm = new Set(), newRun = new Set();
+  if(animate){
+    KM_MILESTONES.forEach(m=>{if(prevKm<m.v && km>=m.v) newKm.add(m.v);});
+    RUN_MILESTONES.forEach(m=>{if(prevRuns<m.v && rc>=m.v) newRun.add(m.v);});
+  }
+
+  // progress bars
+  document.getElementById('km-bar').style.width = Math.min(100,(km/1000)*100)+'%';
+  document.getElementById('run-bar').style.width = Math.min(100,(rc/1000)*100)+'%';
+
+  // stats
+  document.getElementById('total-km-display').textContent = km.toFixed(2);
+  document.getElementById('total-runs-display').textContent = rc;
+  document.getElementById('next-km-milestone').textContent = nextMilestone(KM_MILESTONES,km);
+  document.getElementById('next-run-milestone').textContent = nextMilestone(RUN_MILESTONES,rc);
+  document.getElementById('hdr-km').textContent = km.toFixed(1);
+  document.getElementById('hdr-runs').textContent = rc;
+
+  // ticks
+  renderTicks(KM_MILESTONES,'km-ticks',km,1000);
+  renderTicks(RUN_MILESTONES,'run-ticks',rc,1000);
+
+  // medals
+  renderMedals(KM_MILESTONES,'km-medals',km,'km',newKm);
+  renderMedals(RUN_MILESTONES,'run-medals',rc,'run',newRun);
+
+  // table
+  renderTable();
+
+  prevKm = km; prevRuns = rc;
+
+  // toast for new medals
+  if(newKm.size || newRun.size){
+    const labels = [
+      ...[...newKm].map(v=>v+'km'),
+      ...[...newRun].map(v=>v+' runs')
+    ];
+    showToast('🏅 Medal unlocked: '+labels.join(', ')+'!');
+  }
+}
+
+// ─────────────────────────────────────────────
+//  TABLE
+// ─────────────────────────────────────────────
+function renderTable(){
+  const tbody = document.getElementById('log-body');
+  const emp = document.getElementById('empty-state');
+  document.getElementById('log-count-badge').textContent = runs.length+' entries';
+
+  if(!runs.length){tbody.innerHTML='';emp.style.display='block';return;}
+  emp.style.display='none';
+
+  const sorted = [...runs].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  tbody.innerHTML = sorted.map((r,i)=>{
+    const hidden = i>=3 ? 'log-row hidden' : 'log-row';
+    return `<tr class="${hidden}" data-id="${r.id}">
+      <td style="color:var(--text3);font-size:.8rem">${sorted.length-i}</td>
+      <td class="td-date">${formatDate(r.date)}</td>
+      <td class="td-time">${r.time||'—'}</td>
+      <td class="td-dist">${parseFloat(r.dist).toFixed(2)} km</td>
+      <td class="td-actions">
+        <button class="del-btn" onclick="deleteRun('${r.id}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function formatDate(d){
+  if(!d) return '—';
+  const dt = new Date(d+'T12:00:00');
+  return dt.toLocaleDateString('en-CA',{year:'numeric',month:'short',day:'numeric'});
+}
+
+// ─────────────────────────────────────────────
+//  ADD / DELETE
+// ─────────────────────────────────────────────
+function toggleForm(){
+  const f = document.getElementById('addForm');
+  f.classList.toggle('open');
+  if(f.classList.contains('open')){
+    document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('inp-dist').focus();
+  }
+}
+
+function showError(msg){
+  const e = document.getElementById('form-error');
+  e.textContent=msg; e.style.display='block';
+  setTimeout(()=>e.style.display='none',3000);
+}
+
+function addRun(){
+  const date = document.getElementById('inp-date').value;
+  const dist = parseFloat(document.getElementById('inp-dist').value);
+  const time = document.getElementById('inp-time').value;
+  if(!date){return showError('Please enter a date.');}
+  if(!dist||dist<=0){return showError('Please enter a valid distance.');}
+  runs.push({id:Date.now()+'',date,dist,time:time||''});
+  save();
+  render(true);
+  document.getElementById('inp-dist').value='';
+  document.getElementById('inp-time').value='';
+  showToast(`✅ Run added: ${dist.toFixed(2)} km`);
+}
+
+function deleteRun(id){
+  runs = runs.filter(r=>r.id!==id);
+  save();
+  render(false);
+}
+
+function clearAll(e){
+  e.stopPropagation();
+  if(!runs.length) return;
+  if(confirm('Clear all run data? This cannot be undone.')){
+    runs=[];save();render(false);showToast('🗑 All data cleared');
+  }
+}
+
+// ─────────────────────────────────────────────
+//  CSV
+// ─────────────────────────────────────────────
+function handleCSV(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    const lines = e.target.result.split('\n').filter(l=>l.trim());
+    let imported=0,errors=0;
+    lines.forEach((line,i)=>{
+      if(i===0 && line.toLowerCase().includes('date')) return; // skip header
+      const parts = line.split(',').map(p=>p.trim().replace(/"/g,''));
+      if(parts.length<2) return errors++;
+      const date=parts[0], dist=parseFloat(parts[2]||parts[1]);
+      const time=parts[1]||'';
+      if(!date||isNaN(dist)||dist<=0) return errors++;
+      runs.push({id:Date.now()+Math.random()+'',date,dist,time});
+      imported++;
+    });
+    save();render(true);
+    showToast(`📂 Imported ${imported} runs${errors?' ('+errors+' skipped)':''}`);
+    evt.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function downloadCSV(){
+  const sorted = [...runs].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const rows = [['Date','Time','Distance (km)'],...sorted.map(r=>[r.date,r.time||'',r.dist])];
+  const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'runtrack_export.csv';
+  a.click();
+  showToast('⬇ CSV downloaded');
+}
+
+// ─────────────────────────────────────────────
+//  LOG EXPAND
+// ─────────────────────────────────────────────
+function toggleLog(){
+  document.getElementById('logSection').classList.toggle('expanded');
+}
+
+// ─────────────────────────────────────────────
+//  THEME
+// ─────────────────────────────────────────────
+function toggleTheme(){
+  const html = document.documentElement;
+  const isDark = html.dataset.theme==='dark';
+  html.dataset.theme = isDark?'light':'dark';
+  document.getElementById('themeBtn').textContent = isDark?'🌙 Dark':'☀️ Light';
+  localStorage.setItem('runtrack_theme',html.dataset.theme);
+}
+
+// ─────────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────────
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._to);
+  t._to = setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+(function init(){
+  const savedTheme = localStorage.getItem('runtrack_theme')||'dark';
+  document.documentElement.dataset.theme = savedTheme;
+  document.getElementById('themeBtn').textContent = savedTheme==='dark'?'🌙 Dark':'☀️ Light';
+  prevKm = totalKm(); prevRuns = totalRuns();
+  render(false);
+})();
+</script>
+</body>
+</html>
